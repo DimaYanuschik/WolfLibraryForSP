@@ -35,7 +35,7 @@ extern "C" __declspec(dllexport) int GetRandomEvent(double p1, double p2, double
     return 5; // На всякий случай, если что-то пойдет не так
 }
 
-extern "C" __declspec(dllexport) int GetRandomEvent(double p1, double p2, double p3, double p4, double p5) {
+extern "C" __declspec(dllexport) int GetRandomEvent5(double p1, double p2, double p3, double p4, double p5) {
     // Проверяем, что сумма вероятностей не превышает 100%
     double total = p1 + p2 + p3 + p4 + p5;
     if (total > 100.0) {
