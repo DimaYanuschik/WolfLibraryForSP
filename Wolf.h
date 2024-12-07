@@ -3,6 +3,11 @@
 #include <windows.h>
 #include <random>
 #include <iostream>
+#include <mutex>
+#include <atomic>
+#include <chrono>
+#include <thread>
+
 
 extern "C" __declspec(dllexport) int GetRandomEvent(double p1, double p2, double p3) {
     double p5 = 25.0;
@@ -94,3 +99,100 @@ extern "C" __declspec(dllexport) int CalculateProbabilities(double value1, doubl
     // Возвращаем число от 1 до 5 на основе вероятностей
     return GetRandomEvent(p1, p2, p3);
 }
+
+// Функция для удаления из хранилища. В зависимости от параметра use_atomic,
+// используется атомарное хранилище или обычное с мьютексом.
+extern "C" __declspec(dllexport) bool DeleteFromStorage(
+    std::atomic<int>& atomic_storage,
+    int& mutex_storage,
+    bool use_atomic,
+    std::mutex& mtx
+) {
+    if (use_atomic) {
+        int current_nuts = atomic_storage.load(std::memory_order_relaxed);
+        if (current_nuts > 0) {
+            atomic_storage.fetch_sub(1, std::memory_order_relaxed);
+            return true;
+        }
+        else {
+            return false;
+        }
+    }
+    else {
+        std::lock_guard<std::mutex> lock(mtx);
+        if (mutex_storage > 0) {
+            --mutex_storage;
+            return true;
+        }
+        else {
+            return false;
+        }
+    }
+}
+
+// Функция для сброса количества элементов в хранилище
+extern "C" __declspec(dllexport) void ResetNutsCount(std::atomic<int>& atomic_storage, int& mutex_storage, bool use_atomic) {
+    if (use_atomic) {
+        atomic_storage.store(0, std::memory_order_relaxed);
+      
+    }
+    else {
+        mutex_storage = 0;
+    
+    }
+}
+
+// Функция для возобновления работы потоков
+extern "C" __declspec(dllexport) void ResumeThreads(
+    std::mutex& cv_mtx,
+    std::condition_variable& cv,
+    std::atomic<bool>& should_terminate
+) {
+    std::unique_lock<std::mutex> lock(cv_mtx);
+    should_terminate.store(false, std::memory_order_relaxed);
+    cv.notify_all();
+}
+
+// Функция для удаления потока до окончания программы
+__declspec(dllexport) void DeleteThread(int thread_id, std::chrono::steady_clock::time_point start_time,
+    std::mutex& cv_mtx, std::atomic<bool>& should_terminate,
+    std::condition_variable& cv, int simulation_duration_ms) {
+    std::unique_lock<std::mutex> lock(cv_mtx);
+    should_terminate.store(true, std::memory_order_relaxed);
+
+    // Вычисление оставшегося времени в симуляции
+    auto elapsed_time = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start_time).count();
+    auto remaining_time = simulation_duration_ms - elapsed_time;
+
+    if (remaining_time > 0) {
+        cv.wait_for(lock, std::chrono::milliseconds(remaining_time), [&] {
+            return !should_terminate.load(std::memory_order_relaxed);
+            });
+    }
+}
+
+// Статус блокировки потока (заблокирован или возрожден)
+enum class BlockStatus {
+    Blocked,
+    Revived
+};
+
+// Функция для блокировки потока на случайное время
+__declspec(dllexport) BlockStatus BlockThread(int thread_id, std::mutex& cv_mtx, std::atomic<bool>& should_terminate,
+    std::condition_variable& cv) {
+    std::unique_lock<std::mutex> lock(cv_mtx);
+    should_terminate.store(true, std::memory_order_relaxed);
+
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<> dis(0, 5);
+
+    // Ожидание случайное количество времени или до завершения потока
+    bool revived = cv.wait_for(lock, std::chrono::milliseconds(dis(gen)), [&] {
+        return !should_terminate.load(std::memory_order_relaxed);
+        });
+
+    return revived ? BlockStatus::Revived : BlockStatus::Blocked;
+}
+
+
