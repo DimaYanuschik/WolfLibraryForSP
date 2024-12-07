@@ -109,8 +109,8 @@ extern "C" __declspec(dllexport) bool DeleteFromStorage(
     std::mutex& mtx
 ) {
     if (use_atomic) {
-        int current_nuts = atomic_storage.load(std::memory_order_relaxed);
-        if (current_nuts > 0) {
+        int current = atomic_storage.load(std::memory_order_relaxed);
+        if (current > 0) {
             atomic_storage.fetch_sub(1, std::memory_order_relaxed);
             return true;
         }
@@ -131,7 +131,7 @@ extern "C" __declspec(dllexport) bool DeleteFromStorage(
 }
 
 // Функция для сброса количества элементов в хранилище
-extern "C" __declspec(dllexport) void ResetNutsCount(std::atomic<int>& atomic_storage, int& mutex_storage, bool use_atomic) {
+extern "C" __declspec(dllexport) void ResetStorageCount(std::atomic<int>& atomic_storage, int& mutex_storage, bool use_atomic) {
     if (use_atomic) {
         atomic_storage.store(0, std::memory_order_relaxed);
       
