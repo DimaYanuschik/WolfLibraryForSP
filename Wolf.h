@@ -7,6 +7,13 @@
 #include <atomic>
 #include <chrono>
 #include <thread>
+#include <fstream>
+#include <vector>
+#include <string>
+#include <filesystem>
+#include <cstdlib>
+#include <ctime>
+#include <sstream>
 
 
 extern "C" __declspec(dllexport) int GetRandomEvent(double p1, double p2, double p3) {
