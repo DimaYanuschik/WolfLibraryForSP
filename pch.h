@@ -8,6 +8,19 @@
 #define PCH_H
 
 // Добавьте сюда заголовочные файлы для предварительной компиляции
-#include "framework.h"
+#include <Windows.h>
+#include <random>
+#include <iostream>
+#include <mutex>
+#include <atomic>
+#include <chrono>
+#include <thread>
+#include <fstream>
+#include <vector>
+#include <string>
+#include <cstdlib>
+#include <ctime>
+#include <sstream>
+#include <queue>
 
 #endif //PCH_H
