@@ -547,3 +547,114 @@ extern "C" __declspec(dllexport) int ExecuteRandomEvent(
         return -1; // Ошибка
     }
 }
+
+extern "C" __declspec(dllexport) bool isGroupTrainingComplete(bool** matrix, std::atomic<bool>*prepodAlive, int AMOUNT_OF_GR, int AMOUNT_OF_PR) {
+    for (int i = 0; i < AMOUNT_OF_GR; ++i) {
+        for (int j = 0; j < AMOUNT_OF_PR; ++j) {
+            if (prepodAlive[j] && !matrix[i][j]) {
+                return false;
+            }
+        }
+    }
+    return true;
+}
+
+// Функция для действия "Сорвать занятие"
+extern "C" __declspec(dllexport) void disruptLesson(bool** matrix, std::atomic<bool>*prepodAlive, int prepod_id, int group_id) {
+    if (prepodAlive[prepod_id]) {
+        if (matrix[group_id][prepod_id]) {
+            std::cout << "Волк очищает занятие " + std::to_string(prepod_id + 1) + " преподавателя из памяти " + std::to_string(group_id + 1) + " группы" << std::endl;
+            matrix[group_id][prepod_id] = false;
+        }
+    }
+    else {
+        std::cout << "Волк попытался сорвать занятие, но забыл, что уже съел этого преподавателя." << std::endl;
+    }
+}
+
+// Функция для действия "украсть журнал посещаемости"
+extern "C" __declspec(dllexport) void stealAttendanceSheet(bool** matrix, std::atomic<bool>*prepodAlive, int prepod_id, const int AMOUNT_OF_GR) {
+    if (prepodAlive[prepod_id]) {
+        std::cout << "Волк украл журнал посещаемости у " + std::to_string(prepod_id + 1) + " преподавателя " << std::endl;
+
+        for (int i = 0; i < AMOUNT_OF_GR; i++)
+        {
+            matrix[i][prepod_id] = false;
+        }
+    }
+    else {
+        std::cout << "Волк пытался украсть журнал посещаемости у преподавателя, но забыл, что уже съел его." << std::endl;
+    }
+}
+
+// Функция для действия "запереть преподавателя"
+extern "C" __declspec(dllexport) void lockTeacher(std::atomic<bool>*prepodAlive, std::atomic<bool>*prepodLocked, int prepod_id, std::mutex * prepodLockMutex) {
+    if (prepodAlive[prepod_id]) {
+        prepodLockMutex[prepod_id].lock();
+
+        std::cout << "Волк запирает преподавателя " + std::to_string(prepod_id + 1) + " в кабинете" << std::endl;
+        prepodLocked[prepod_id] = true;
+
+        prepodLockMutex[prepod_id].unlock();
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(5000));
+
+        prepodLockMutex[prepod_id].lock();
+
+        prepodLocked[prepod_id] = false;
+        std::cout << "Преподаватель (ДОББИ) " + std::to_string(prepod_id + 1) + " теперь снова свободен!" << std::endl;
+
+        prepodLockMutex[prepod_id].unlock();
+    }
+    else {
+        std::cout << "Волк пытался запереть преподавателя, но забыл, что уже съел его на завтрак." << std::endl;
+    }
+}
+
+// Функция для действия "уничтожить университет"
+extern "C" __declspec(dllexport) void destroyUniversity(bool** matrix, std::atomic<bool>*prepodAlive, int const AMOUNT_OF_GR, int const AMOUNT_OF_PR, std::atomic<bool> simulationRunning) {
+    std::cout << "Волк уничтожает университет! Потому что он мстит ректору!" << std::endl;
+
+    for (int i = 0; i < AMOUNT_OF_GR; i++) {
+        for (int j = 0; j < AMOUNT_OF_PR; j++) {
+            matrix[i][j] = false;
+        }
+    }
+
+    for (int i = 0; i < AMOUNT_OF_PR; i++) {
+        prepodAlive[i].store(false);
+    }
+
+    simulationRunning.store(false);
+}
+
+// Функция для действия "убить преподавателя"
+extern "C" __declspec(dllexport) void killPrepod(bool** matrix, std::atomic<bool>*prepodAlive, int prepod_id, int const AMOUNT_OF_GR, int const AMOUNT_OF_PR, std::
+    atomic<bool> simulationRunning) {
+    if (prepodAlive[prepod_id]) {
+        std::cout << "Волк убивает преподавателя " + std::to_string(prepod_id + 1) << std::endl;
+
+        prepodAlive[prepod_id].store(false);
+
+        for (int i = 0; i < AMOUNT_OF_GR; i++)
+        {
+            matrix[i][prepod_id] = false;
+        }
+
+        bool all_dead = true;
+        for (int i = 0; i < AMOUNT_OF_PR; ++i) {
+            if (prepodAlive[i]) {
+                all_dead = false;
+                break;
+            }
+        }
+
+        if (all_dead) {
+            simulationRunning.store(false);
+            std::cout << "Все преподаватели мертвы. Симуляция завершена." << std::endl;
+        }
+    }
+    else {
+        std::cout << "Волк пытался убить преподавателя, но забыл, что уже съел его вчера." << std::endl;
+    }
+}
